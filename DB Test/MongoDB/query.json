@@ -1,0 +1,47 @@
+[
+    {
+      $match: {
+        OrderDate: {
+          $gte: "2023-01-10T00:00:00Z",
+          $lt: "2023-02-01T00:00:00Z"
+        }
+      }
+    },
+    {
+      $unwind: "$Products"
+    },
+    {
+      $group: {
+        _id: "$Products.ProductId",
+        OrderId: { $first: "$_id" },
+        TotalSoldItems: { $sum: "$Products.Qty" },
+        TotalPrice: { $sum: "$Products.TotalPrice" }
+      }
+    },
+    {
+      $sort: {
+        TotalPrice: -1
+      }
+    },
+    {
+      $limit: 3
+    },
+    {
+      $lookup: {
+        from: "product",
+        localField: "_id",
+        foreignField: "_id",
+        as: "product"
+      }
+    },
+    {
+      $project: {
+      _id: 0,
+      TotalSoldItems: 1,
+      TotalPrice: 1,
+      ProductId: "$_id",
+      ProductName: { $arrayElemAt: ["$product.Name", 0] }
+      }
+    }
+  ]
+  
