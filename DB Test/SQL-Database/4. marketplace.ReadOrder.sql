@@ -1,110 +1,96 @@
-Use Sales
-GO
-
-CREATE OR ALTER PROCEDURE marketplace.ReadOrder
-    @FilterXml xml,
-    @DataTablesXml xml,
-    @Language varchar(2) = 'EN'
+CREATE PROCEDURE marketplace.ReadOrder
+    @FilterXml XML,
+    @DataTablesXml XML,
+    @Language VARCHAR(2) = 'EN'
 AS
-
--- Validaciones
-
--- Lectura parametros
-
--- 'Order-Header'
-IF EXISTS ( SELECT 1
-            FROM   @TableData
-            WHERE  TableName = 'Order-Header' )
 BEGIN
-    SELECT TableName = 'Order-Header';
+    SET NOCOUNT ON;
 
+    DECLARE @CustomerId INT, @OrderId INT, @Status NVARCHAR(20);
+
+    -- Obtener valores del filtro de XML
     SELECT
-               O.OrderId,
-               O.CustomerId,
-               C.CustomerName,
-               O.OrderDate,
-               O.Status
-    FROM		...
-	WHERE		...
-    ORDER BY    ...;
+        @CustomerId = FilterXml.value('(//Filter/CustomerId)[1]', 'INT'),
+        @OrderId = FilterXml.value('(//Filter/OrderId)[1]', 'INT'),
+        @Status = FilterXml.value('(//Filter/Status)[1]', 'NVARCHAR(20)')
+    FROM
+        @FilterXml.nodes('/Filter') AS F (FilterXml);
+
+    -- 'Order-Header' case
+    IF EXISTS (SELECT 1 FROM @DataTablesXml.nodes('/Tables/Table[TableName="Order-Header"]') AS DT (XmlData))
+    BEGIN
+       -- SELECT TableName = 'Order-Header';
+
+        SELECT
+            o.OrderId,
+            o.CustomerId,
+            c.CustomerName,
+            o.OrderDate,
+            o.Status
+        FROM
+            marketplace.[Order] AS o
+        JOIN
+            marketplace.Customer AS c ON o.CustomerId = c.CustomerId
+        WHERE
+            (@CustomerId IS NULL OR o.CustomerId = @CustomerId)
+            AND (@OrderId IS NULL OR o.OrderId = @OrderId)
+            AND (@Status IS NULL OR o.Status = @Status)
+    END;
+
+    -- 'Order-Detail' case
+    IF EXISTS (SELECT 1 FROM @DataTablesXml.nodes('/Tables/Table[TableName="Order-Detail"]') AS DT (XmlData))
+    BEGIN
+        --SELECT TableName = 'Order-Detail';
+
+        SELECT
+            op.OrderId,
+            op.ProductId,
+            op.Qty,
+            op.UnitPrice,
+            op.TotalPrice
+        FROM
+            marketplace.OrderProduct AS op
+        JOIN
+            marketplace.[Order] AS o ON op.OrderId = o.OrderId
+        JOIN
+            marketplace.Customer AS c ON o.CustomerId = c.CustomerId
+        WHERE
+            (@CustomerId IS NULL OR o.CustomerId = @CustomerId)
+            AND (@OrderId IS NULL OR o.OrderId = @OrderId)
+            AND (@Status IS NULL OR o.Status = @Status)
+    END;
+
+    -- 'Order-History-Json' case
+    IF EXISTS (SELECT 1 FROM @DataTablesXml.nodes('/Tables/Table[TableName="Order-History-Json"]') AS DT (XmlData))
+    BEGIN
+        --SELECT TableName = 'Order-History-Json';
+
+        SELECT
+            o.OrderId AS '_id',
+            c.CustomerId,
+            c.CustomerName,
+            ld.Description AS CustomerLocationHierarchy,
+            COUNT(op.ProductId) AS ProductsCount,
+            SUM(op.TotalPrice) AS TotalOrder
+        FROM
+            marketplace.[Order] AS o
+        JOIN
+            marketplace.Customer AS c ON o.CustomerId = c.CustomerId
+        JOIN
+            marketplace.Location AS l ON c.LocationId = l.LocationId
+        JOIN
+            marketplace.LocationDescription AS ld ON l.LocationId = ld.LocationId AND ld.Language = @Language
+        LEFT JOIN
+            marketplace.OrderProduct AS op ON o.OrderId = op.OrderId
+        WHERE
+            (@CustomerId IS NULL OR o.CustomerId = @CustomerId)
+            AND (@OrderId IS NULL OR o.OrderId = @OrderId)
+            AND (@Status IS NULL OR o.Status = @Status)
+        GROUP BY
+            o.OrderId,
+            c.CustomerId,
+            c.CustomerName,
+            ld.Description
+        FOR JSON PATH, ROOT('Order-History-Json')
+    END;
 END;
-
--- 'Order-Detail'
-IF EXISTS ( SELECT 1
-            FROM   @TableData
-            WHERE  TableName = 'Order-Detail' )
-BEGIN
-    SELECT TableName = 'Order-Detail';
-    SELECT
-               OP.OrderId,
-               OP.ProductId,
-               OP.Qty,
-               OP.UnitPrice,
-               OP.TotalPrice
-    FROM		...
-	WHERE		...
-    ORDER BY    ...;
-END;
-
--- 'Order-History-Json'
-IF EXISTS ( SELECT 1
-            FROM   @TableData
-            WHERE  TableName = 'Order-History-Json' )
-BEGIN
-    SELECT TableName = 'Order-History-Json';
-
-
-END;
-GO
-
-/*
--------------------- By OrderId
-DECLARE
-    @FilterXml xml = '
-	<ROOT>
-		<Filter OrderId="1"/>
-	</ROOT>',
-    @DataTablesXml xml = '
-	<ROOT>
-		<DataTable TableName="Order-Header"/>
-		<DataTable TableName="Order-Detail"/>
-	</ROOT>';
-
-EXEC marketplace.ReadOrder
-    @FilterXml = @FilterXml,
-    @DataTablesXml = @DataTablesXml;
-GO
-
--------------------- By CustomerId and Order in OPEN Status
-DECLARE
-    @FilterXml xml = '
-	<ROOT>
-		<Filter CustomerId="1" Status="OPEN"/>
-	</ROOT>',
-    @DataTablesXml xml = '
-	<ROOT>
-		<DataTable TableName="Order-Header"/>
-		<DataTable TableName="Order-Detail"/>
-	</ROOT>';
-
-EXEC marketplace.ReadOrder
-    @FilterXml = @FilterXml,
-    @DataTablesXml = @DataTablesXml;
-*/
-
--------------------- Order-History by CustomerId 
-DECLARE
-    @FilterXml xml = '
-	<ROOT>
-		<!-- <Filter CustomerId="1"/> -->
-		<Filter CustomerId="-1" />
-	</ROOT>',
-    @DataTablesXml xml = '
-	<ROOT>
-		<DataTable TableName="Order-History-Json"/>
-	</ROOT>';
-
-EXEC marketplace.ReadOrder
-    @FilterXml = @FilterXml,
-    @DataTablesXml = @DataTablesXml,
-    @Language = 'DE';
