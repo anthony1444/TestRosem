@@ -1,0 +1,45 @@
+.card {
+  // width: 300px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.card img {
+  width: 100%;
+  height: auto;
+}
+
+.card-content {
+  padding: 10px;
+}
+
+.title-light {
+  color: #888;
+  font-size: 16px;
+}
+
+.subtitle-dark {
+  color: #333;
+  font-size: 14px;
+}
+
+.green-box {
+  background-color: #004d40;
+  padding: 6px;
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  border-radius: 0 6px 0 0;
+}
+
+.white-text {
+  color: #fff;
+  font-size: 12px;
+}
+.subtitle2 {
+  margin-top: 2px;
+}
+.black-div{
+  top: 40px;
+}

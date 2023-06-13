@@ -1,0 +1,37 @@
+
+<div class="container">
+  <div class="row" >
+    <div *ngFor="let offer of offers" class="col-lg-3 col-md-6 col-xs-12 pt-3">
+
+      <app-offer [offer]="offer" class="w-100"></app-offer>
+    </div>
+  </div>
+</div>
+<div class="d-flex justify-content-center mt-4  ">
+  <!-- <nav > -->
+    <ul  class="pagination  pagination-lg pagination-sm" >
+      <li class="page-item" (click)="getFirstOffersPage()">
+        <a class="page-link">First</a>
+      </li>
+      <li class="page-item" (click)="GetPreviousPageIndexes()">
+        <a class="page-link">Previous</a>
+      </li>
+      <div class="custom-pagination d-flex">
+        <li class="page-item" [ngClass]="{'active':item === pageIndex }" (click)="getOffersPage(item, pageSize)" *ngFor="let item of numbers">
+          <a class="page-link">{{item}}</a>
+        </li>
+      </div>
+      <li class="page-item" (click)="GetNextPageIndexes()">
+        <a class="page-link">Next</a>
+      </li>
+      <li class="page-item" (click)="getLastOffersPage()">
+        <a class="page-link">Last</a>
+      </li>
+    </ul>
+  <!-- </nav> -->
+</div>
+<div class="d-flex justify-content-center">
+  <button mat-raised-button (click)="openDialog()">Add New Post</button>
+</div>
+
+<!-- <app-offer-creation></app-offer-creation> -->
